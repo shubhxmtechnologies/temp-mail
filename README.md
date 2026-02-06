@@ -97,4 +97,4 @@ pm2 save
 ```
 
 ## 🤝 Support
-For any issues, contact the developer via the bot or from [here](tg://user?id=6677907428)\.
+For any issues, contact the developer via the bot or from <a href="tg://user?id=6677907428">here</a>.

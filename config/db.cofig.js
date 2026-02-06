@@ -24,6 +24,23 @@ const botConfigSchema = new mongoose.Schema({
 
 export const BotConfig = mongoose.model("BotConfig", botConfigSchema);
 
+const mailSessionSchema = new mongoose.Schema({
+    telegramId: { type: Number, unique: true, index: true },
+    account: {
+        username: String,
+        password: { type: String, select: true } // Ensure password is included
+    }
+}, { timestamps: true });
+
+export const MailSession = mongoose.model("MailSession", mailSessionSchema);
+
+const adminStateSchema = new mongoose.Schema({
+    telegramId: { type: Number, unique: true, index: true },
+    state: { type: mongoose.Schema.Types.Mixed }
+}, { timestamps: true });
+
+export const AdminState = mongoose.model("AdminState", adminStateSchema);
+
 export const connectDB = async () => {
     try {
         await mongoose.connect(process.env.MONGO_URI+"TG_BOT", {

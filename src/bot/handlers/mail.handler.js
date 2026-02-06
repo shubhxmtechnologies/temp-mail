@@ -12,8 +12,8 @@ export function registerMailHandlers(bot) {
         const userId = ctx.from.id;
         const config = await getBotConfig();
 
-        if (mailManager.hasActiveMail(userId)) {
-            const currentMail = mailManager.getUserMail(userId);
+        if (await mailManager.hasActiveMail(userId)) {
+            const currentMail = await mailManager.getUserMail(userId);
             const check = await mailManager.refresh(userId);
 
             if (check && check.status) {
@@ -26,7 +26,7 @@ Copy mail by clicking on the mail.`, {
                     reply_markup: getMailMenuKeyboard(true, config.developerContact)
                 });
             } else {
-                mailManager.userSessions.delete(userId);
+                await mailManager.cleanupSession(userId);
             }
         }
 
@@ -58,7 +58,7 @@ Copy mail by clicking on the mail.`;
         const userId = ctx.from.id;
         const config = await getBotConfig();
 
-        if (!mailManager.hasActiveMail(userId)) {
+        if (!(await mailManager.hasActiveMail(userId))) {
             try {
                 return await ctx.editMessageText("❌ No active mail found. Please generate one.", {
                     reply_markup: getMailMenuKeyboard(false, config.developerContact)
@@ -91,7 +91,7 @@ Copy mail by clicking on the mail.`;
                 throw new Error("Session Lost");
             }
         } catch (error) {
-            mailManager.userSessions.delete(userId);
+            await mailManager.cleanupSession(userId);
             try {
                 await ctx.editMessageText("⚠️ Session expired. Please generate a new one.", {
                     reply_markup: getMailMenuKeyboard(false, config.developerContact)
@@ -169,13 +169,13 @@ ${rawBody || "No content available."}`;
         const userId = ctx.from.id;
         const config = await getBotConfig();
 
-        if (!mailManager.hasActiveMail(userId)) {
+        if (!(await mailManager.hasActiveMail(userId))) {
             return ctx.editMessageText("❌ No active mail found.", {
                 reply_markup: getMailMenuKeyboard(false, config.developerContact)
             });
         }
 
-        const currentMail = mailManager.getUserMail(userId);
+        const currentMail = await mailManager.getUserMail(userId);
         await ctx.editMessageText(`📧 <b>Your Active Mail:</b>
 
 <code>${currentMail.username}</code>

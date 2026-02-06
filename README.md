@@ -10,13 +10,14 @@ A powerful Telegram bot that provides temporary email addresses using the `mailj
 - **Mandatory Subscription**: Optional feature to require users to join a specific channel before using the bot.
 - **Admin Dashboard**: Manage bot settings, broadcast messages to all users, and monitor user stats.
 - **Multi-Admin Support**: Add or remove admins dynamically via the admin panel.
+- **Persistent Sessions**: User email sessions and admin states are stored in MongoDB, so they persist even if the bot restarts.
 
 ## 🛠️ How It Works
 
 1.  **Start**: Users start the bot and are greeted by a welcome message.
 2.  **Access Control**: The `accessMiddleware` checks if the user is an admin or if they have joined the required Telegram channel.
 3.  **Mail Generation**: When a user clicks "Generate Mail", the bot uses the `mailjs` API to create a new account.
-4.  **Session Management**: The account details (username/password) are stored in the bot's memory to allow refreshing the inbox.
+4.  **Session Management**: Account details (username/password) are securely stored in MongoDB.
 5.  **Inbox Refresh**: The bot fetches the latest messages from the `mailjs` service and displays them as inline buttons.
 6.  **Viewing Content**: Clicking a message fetches the full content, cleans up HTML for Telegram display, and extracts important links (like verification buttons).
 
@@ -37,6 +38,8 @@ CHANNEL_ID=-100xxxxxxxxxx
 CHANNEL_LINK=https://t.me/your_channel
 ADMIN_ID=your_telegram_id
 ```
+
+> **Note:** Ensure your `MONGO_URI` includes a trailing `/` if you are using the default connection logic.
 
 ## 📦 Installation
 
@@ -94,4 +97,4 @@ pm2 save
 ```
 
 ## 🤝 Support
-For any issues, contact the developer via the bot's admin settings or your specified developer contact link.
+For any issues, contact the developer via the bot or from [here](tg://user?id=6677907428).

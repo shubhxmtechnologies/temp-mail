@@ -19,14 +19,11 @@ async function bootstrap() {
         const SEED_ADMIN = process.env.ADMIN_ID ? parseInt(process.env.ADMIN_ID) : null;
         await initBotConfig(SEED_ADMIN);
 
-        // State Management
-        const adminStates = new Map();
-
         // Register Global Middlewares
-        bot.use(await accessMiddleware(adminStates));
+        bot.use(accessMiddleware);
 
         // Register All Handlers
-        registerAdminHandlers(bot, adminStates);
+        registerAdminHandlers(bot);
         registerMailHandlers(bot);
         registerUserHandlers(bot);
 

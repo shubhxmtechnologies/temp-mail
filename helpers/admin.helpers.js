@@ -1,4 +1,4 @@
-import { BotConfig, User } from "../config/db.cofig.js";
+import { BotConfig, User, AdminState } from "../config/db.cofig.js";
 
 // Ensure config exists (call this at startup)
 export async function initBotConfig(initialAdminId) {
@@ -73,4 +73,21 @@ export async function getAllUsers() {
 
 export async function getUserCount() {
     return await User.countDocuments();
+}
+
+export async function setAdminState(telegramId, state) {
+    await AdminState.findOneAndUpdate(
+        { telegramId },
+        { state },
+        { upsert: true, new: true }
+    );
+}
+
+export async function getAdminState(telegramId) {
+    const data = await AdminState.findOne({ telegramId });
+    return data ? data.state : null;
+}
+
+export async function clearAdminState(telegramId) {
+    await AdminState.deleteOne({ telegramId });
 }

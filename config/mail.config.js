@@ -18,7 +18,7 @@ class TelegramMailManager {
             }
             return null;
         } catch (error) {
-            console.error(`Error for user ${telegramId}:`, error);
+            console.error(`Error for genereate mail : `, error);
             return null;
         }
     }

@@ -1,0 +1,201 @@
+import {
+    isAdmin,
+    getUserCount,
+    getAllUsers,
+    updateChannelInfo,
+    updateDeveloperContact,
+    addAdmin,
+    removeAdmin,
+    getBotConfig
+} from "../../../helpers/admin.helpers.js";
+import {
+    getAdminDashboardKeyboard,
+    getAdminSettingsKeyboard,
+    getAdminManageKeyboard,
+    getCancelKeyboard
+} from "../keyboards.js";
+
+export function registerAdminHandlers(bot, adminStates) {
+    // Command
+    bot.command('admin', async (ctx) => {
+        if (!await isAdmin(ctx.from.id)) return;
+        ctx.reply("👮‍♂️ <b>Admin Dashboard</b>", {
+            parse_mode: 'HTML',
+            reply_markup: getAdminDashboardKeyboard()
+        });
+    });
+
+    // Actions
+    bot.action("admin_menu", async (ctx) => {
+        if (!await isAdmin(ctx.from.id)) return;
+        try {
+            await ctx.editMessageText("👮‍♂️ <b>Admin Dashboard</b>", {
+                parse_mode: 'HTML',
+                reply_markup: getAdminDashboardKeyboard()
+            });
+        } catch (e) {
+            ctx.reply("👮‍♂️ <b>Admin Dashboard</b>", {
+                parse_mode: 'HTML',
+                reply_markup: getAdminDashboardKeyboard()
+            });
+        }
+    });
+
+    bot.action("admin_stats", async (ctx) => {
+        if (!await isAdmin(ctx.from.id)) return;
+        const count = await getUserCount();
+        await ctx.editMessageText(`📊 <b>Bot Statistics</b>
+
+👥 Total Users: <b>${count}</b>`, {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [[{ text: "🔙 Back", callback_data: "admin_menu" }]] }
+        });
+    });
+
+    bot.action("admin_broadcast", async (ctx) => {
+        if (!await isAdmin(ctx.from.id)) return;
+        adminStates.set(ctx.from.id, { step: 'broadcast_msg' });
+        await ctx.editMessageText("📢 <b>Broadcast</b> Send the message (Text, Photo, or Caption) you want to broadcast to all users.", {
+            parse_mode: 'HTML',
+            reply_markup: getCancelKeyboard()
+        });
+    });
+
+    bot.action("admin_forward", async (ctx) => {
+        if (!await isAdmin(ctx.from.id)) return;
+        adminStates.set(ctx.from.id, { step: 'forward_msg' });
+        await ctx.editMessageText("⏩ <b>Forward Post</b> Forward the message from your channel that you want to send to all users.", {
+            parse_mode: 'HTML',
+            reply_markup: getCancelKeyboard()
+        });
+    });
+
+    bot.action("admin_settings", async (ctx) => {
+        if (!await isAdmin(ctx.from.id)) return;
+        const config = await getBotConfig();
+        let text = `⚙️ <b>Settings</b>`;
+        text += `🆔 <b>Channel ID:</b> ${config.channelId || 'Not Set'}`;
+        text += `🔗 <b>Link:</b> ${config.channelLink || 'Not Set'}`;
+        text += `👨‍💻 <b>Dev Contact:</b> ${config.developerContact}`;
+        await ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: getAdminSettingsKeyboard() });
+    });
+
+    bot.action("admin_admins", async (ctx) => {
+        if (!await isAdmin(ctx.from.id)) return;
+        const config = await getBotConfig();
+        let text = `👥 <b>Manage Admins</b> 
+        Current Admins:`;
+        (config.admins || []).forEach(id => text += `<code>${id}</code>`);
+        await ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: getAdminManageKeyboard() });
+    });
+
+    bot.action("admin_set_channel_id", (ctx) => {
+        adminStates.set(ctx.from.id, { step: 'set_channel_id' });
+        ctx.reply("Send the new Channel ID by sending only numeric id of channel:", { reply_markup: getCancelKeyboard() });
+    });
+
+    bot.action("admin_set_channel_link", (ctx) => {
+        adminStates.set(ctx.from.id, { step: 'set_channel_link' });
+        ctx.reply("Send the new Channel Invite username of your channel with @ ex: sk_genz:", { reply_markup: getCancelKeyboard() });
+    });
+
+    bot.action("admin_set_dev", (ctx) => {
+        adminStates.set(ctx.from.id, { step: 'set_dev' });
+        ctx.reply("Send the new Developer Contact numeric id only :", { reply_markup: getCancelKeyboard() });
+    });
+
+    bot.action("admin_add_admin", (ctx) => {
+        adminStates.set(ctx.from.id, { step: 'add_admin' });
+        ctx.reply("Send the Telegram ID of the new admin:", { reply_markup: getCancelKeyboard() });
+    });
+
+    bot.action("admin_remove_admin", (ctx) => {
+        adminStates.set(ctx.from.id, { step: 'remove_admin' });
+        ctx.reply("Send the Telegram ID of the admin to remove:", { reply_markup: getCancelKeyboard() });
+    });
+
+    bot.action("admin_cancel_state", (ctx) => {
+        adminStates.delete(ctx.from.id);
+        ctx.reply("❌ Action cancelled.", {
+            reply_markup: { inline_keyboard: [[{ text: "🔙 Dashboard", callback_data: "admin_menu" }]] }
+        });
+    });
+
+    bot.action("admin_close", (ctx) => ctx.deleteMessage());
+
+    // Message Logic for Admin States
+    bot.on("message", async (ctx, next) => {
+        const userId = ctx.from.id;
+        const state = adminStates.get(userId);
+        if (!state) return next();
+
+        if (state.step === 'broadcast_msg') {
+            adminStates.delete(userId);
+            const users = await getAllUsers();
+            ctx.reply(`⏳ Sending broadcast to ${users.length} users...`);
+            let sent = 0, blocked = 0;
+            for (const user of users) {
+                try {
+                    await ctx.copyMessage(user.telegramId);
+                    sent++;
+                } catch (e) {
+                    blocked++;
+                }
+                await new Promise(r => setTimeout(r, 50));
+            }
+            return ctx.reply(`✅ Broadcast Complete!
+                📨 Sent: ${sent}
+                🚫 Failed: ${blocked}`
+            );
+        }
+
+        if (state.step === 'forward_msg') {
+            adminStates.delete(userId);
+            const users = await getAllUsers();
+            ctx.reply(`⏳ Forwarding to ${users.length} users...`);
+            let sent = 0, blocked = 0;
+            for (const user of users) {
+                try { await ctx.forwardMessage(user.telegramId); sent++; } catch (e) { blocked++; }
+                await new Promise(r => setTimeout(r, 50));
+            }
+            return ctx.reply(`✅ Forward Complete!
+
+📨 Sent: ${sent}
+🚫 Failed: ${blocked}`);
+        }
+
+        if (state.step === 'set_channel_id') {
+            await updateChannelInfo(ctx.message.text, null);
+            adminStates.delete(userId);
+            return ctx.reply("✅ Channel ID updated!", { reply_markup: { inline_keyboard: [[{ text: "🔙 Dashboard", callback_data: "admin_menu" }]] } });
+        }
+
+        if (state.step === 'set_channel_link') {
+            await updateChannelInfo(null, ctx.message.text);
+            adminStates.delete(userId);
+            return ctx.reply("✅ Channel Link updated!", { reply_markup: { inline_keyboard: [[{ text: "🔙 Dashboard", callback_data: "admin_menu" }]] } });
+        }
+
+        if (state.step === 'set_dev') {
+            await updateDeveloperContact(ctx.message.text);
+            adminStates.delete(userId);
+            return ctx.reply("✅ Dev Contact updated!", { reply_markup: { inline_keyboard: [[{ text: "🔙 Dashboard", callback_data: "admin_menu" }]] } });
+        }
+
+        if (state.step === 'add_admin') {
+            const newId = parseInt(ctx.message.text);
+            if (!isNaN(newId)) await addAdmin(newId);
+            adminStates.delete(userId);
+            return ctx.reply(`Done.`, { reply_markup: { inline_keyboard: [[{ text: "🔙 Dashboard", callback_data: "admin_menu" }]] } });
+        }
+
+        if (state.step === 'remove_admin') {
+            const rmId = parseInt(ctx.message.text);
+            if (!isNaN(rmId)) await removeAdmin(rmId);
+            adminStates.delete(userId);
+            return ctx.reply(`Done.`, { reply_markup: { inline_keyboard: [[{ text: "🔙 Dashboard", callback_data: "admin_menu" }]] } });
+        }
+
+        return next();
+    });
+}

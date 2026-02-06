@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@cemalgnlts/mailjs": "^3.1.1",
+    "dotenv": "^17.2.3",
+    "mongoose": "^9.1.5",
+    "telegraf": "^4.16.3"
+  },
+  "type": "module"
+}

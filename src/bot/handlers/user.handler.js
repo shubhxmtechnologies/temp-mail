@@ -39,10 +39,10 @@ export function registerUserHandlers(bot) {
             };
         }
 
-        const options = { 
-            caption: welcomeText, 
+        const options = {
+            caption: welcomeText,
             parse_mode: 'HTML',
-            ...keyboard 
+            ...keyboard
         };
 
         const photoPath = './public/pic_of_bot.webp';
@@ -71,7 +71,8 @@ export function registerUserHandlers(bot) {
             text = `📧 <b>Your Active Mail:</b>\n\n<code>${currentMail.username}</code>\n\nClick refresh to check for incoming messages.`;
         }
 
-        await ctx.editMessageText(
+        await ctx.deleteMessage().catch(() => { });
+        await ctx.reply(
             text,
             {
                 parse_mode: 'HTML',

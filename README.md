@@ -1,8 +1,12 @@
-# 📧 [Telegram Temp Mail Bot](https://t.me/YourBotUsername)
+# 📧 [Telegram Temp Mail Bot](https://t.me/temp_mailtbot)
+
 
 <p align="center">
   <img src="public/pic_of_bot.webp" alt="Bot Logo" width="200">
 </p>
+
+
+👉 **[Start the Bot on Telegram](https://t.me/temp_mailtbot)**
 
 > **Fast, Secure, and Professional Disposable Email Service directly on Telegram.**
 

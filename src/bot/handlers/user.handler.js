@@ -54,30 +54,46 @@ export function registerUserHandlers(bot) {
     });
 
     bot.action("check_join", async (ctx) => {
-        const userId = ctx.from.id;
-        const config = ctx.state.config;
+        try {
+            const userId = ctx.from.id;
+            const config = ctx.state.config;
 
-        const subscribed = await checkSubscription(userId);
-        if (!subscribed) {
-            return ctx.answerCbQuery("❌ Still not joined! Please join and try again.", { show_alert: true });
-        }
+            const subscribed = await checkSubscription(userId);
 
-        const currentMail = await mailManager.getUserMail(userId);
-        const hasMail = !!currentMail;
-
-        let text = "✅ <b>Success!</b> You have joined the channel.\n\nChoose an option to continue:";
-
-        if (hasMail) {
-            text = `📧 <b>Your Active Mail:</b>\n\n<code>${currentMail.username}</code>\n\nClick refresh to check for incoming messages.`;
-        }
-
-        await ctx.deleteMessage().catch(() => { });
-        await ctx.reply(
-            text,
-            {
-                parse_mode: 'HTML',
-                reply_markup: getMailMenuKeyboard(hasMail, config.developerContact)
+            if (!subscribed) {
+                // Always answer the callback query to stop the loading spinner
+                return await ctx.answerCbQuery("❌ Still not joined! Please join and try again.", { show_alert: true });
             }
-        );
+
+            // Answer the query immediately so the "loading" state on the button disappears
+            await ctx.answerCbQuery();
+
+            const currentMail = await mailManager.getUserMail(userId);
+            const hasMail = !!currentMail;
+
+            let text = "✅ <b>Success!</b> You have joined the channel.\n\nChoose an option to continue:";
+
+            if (hasMail) {
+                text = `📧 <b>Your Active Mail:</b>\n\n<code>${currentMail.username}</code>\n\nClick refresh to check for incoming messages.`;
+            }
+
+            // Try to delete the old message
+            try {
+                await ctx.deleteMessage();
+            } catch (e) {
+                console.log("Could not delete message, perhaps it's too old.");
+            }
+
+            // Send the new menu
+            await ctx.reply(
+                text,
+                {
+                    parse_mode: 'HTML',
+                    reply_markup: getMailMenuKeyboard(hasMail, config.developerContact)
+                }
+            );
+        } catch (err) {
+            console.error("Error in check_join action:", err.message);
+        }
     });
 }

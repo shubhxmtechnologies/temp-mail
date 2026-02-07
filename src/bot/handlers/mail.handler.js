@@ -224,6 +224,8 @@ Copy mail by clicking on the mail.`;
                     reply_markup: getMailMenuKeyboard(true, config.developerContact)
                 });
             }
+        } else {
+            ctx.answerCbQuery("❌ Failed to generate new mail.", { show_alert: true });
         }
     });
 }

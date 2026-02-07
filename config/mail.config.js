@@ -28,39 +28,55 @@ class TelegramMailManager {
 
     // 2. Refresh for a specific user
     async refresh(telegramId) {
-        const session = await MailSession.findOne({ telegramId });
-        if (!session) return null;
+        try {
+            const session = await MailSession.findOne({ telegramId });
+            if (!session) return null;
 
-        const { username, password } = session.account;
-        // We must login first because the VPS instance might have lost the token
-        await this.mailjs.login(username, password);
-        return await this.mailjs.getMessages();
+            const { username, password } = session.account;
+            // We must login first because the VPS instance might have lost the token
+            await this.mailjs.login(username, password);
+            return await this.mailjs.getMessages();
+        } catch (error) {
+            console.error(`Error in refresh for ${telegramId}:`, error.message);
+            return null;
+        }
     }
 
     // 2.5 Get a specific message
     async getMessage(telegramId, messageId) {
-        const session = await MailSession.findOne({ telegramId });
-        if (!session) return null;
+        try {
+            const session = await MailSession.findOne({ telegramId });
+            if (!session) return null;
 
-        const { username, password } = session.account;
-        await this.mailjs.login(username, password);
-        return await this.mailjs.getMessage(messageId);
+            const { username, password } = session.account;
+            await this.mailjs.login(username, password);
+            return await this.mailjs.getMessage(messageId);
+        } catch (error) {
+            console.error(`Error in getMessage for ${telegramId}:`, error.message);
+            return null;
+        }
     }
 
     // 3. Delete Mail for a specific user
     async deleteMail(telegramId) {
-        const session = await MailSession.findOne({ telegramId });
-        if (!session) return false;
+        try {
+            const session = await MailSession.findOne({ telegramId });
+            if (!session) return true; // Already gone
 
-        const { username, password } = session.account;
-        await this.mailjs.login(username, password);
-        const res = await this.mailjs.deleteMe();
+            const { username, password } = session.account;
+            try {
+                await this.mailjs.login(username, password);
+                await this.mailjs.deleteMe();
+            } catch (err) {
+                console.warn(`Server side delete failed for ${telegramId}, likely already gone.`, err.message);
+            }
 
-        if (res.status) {
-            await MailSession.deleteOne({ telegramId }); // Remove from MongoDB
+            await MailSession.deleteOne({ telegramId }); // Always remove from MongoDB if user requested delete
             return true;
+        } catch (error) {
+            console.error(`Error for delete mail : `, error);
+            return false;
         }
-        return false;
     }
 
     // 4. Check if a specific user has a mail

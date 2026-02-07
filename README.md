@@ -1,101 +1,119 @@
-# Telegram Temp Mail Bot
+# 📧 [Telegram Temp Mail Bot](https://t.me/YourBotUsername)
 
-A powerful Telegram bot that provides temporary email addresses using the `mailjs` library. Users can generate disposable emails, receive messages, and view content directly within Telegram.
+> **Fast, Secure, and Professional Disposable Email Service directly on Telegram.**
 
-## 🚀 Features
+---
 
-- **Instant Email Generation**: Create a temporary email address with one click.
-- **Inbox Management**: Refresh your inbox to check for new messages.
-- **Message Viewer**: Read HTML and text emails with automatic link extraction for easy access.
-- **Mandatory Subscription**: Optional feature to require users to join a specific channel before using the bot.
-- **Admin Dashboard**: Manage bot settings, broadcast messages to all users, and monitor user stats.
-- **Multi-Admin Support**: Add or remove admins dynamically via the admin panel.
-- **Persistent Sessions**: User email sessions and admin states are stored in MongoDB, so they persist even if the bot restarts.
+## 📖 Table of Contents
+- [✨ Features](#-features)
+- [🛠️ How It Works](#️-how-it-works)
+- [📋 System Requirements](#-system-requirements)
+- [⚙️ Configuration](#️-configuration)
+- [🚀 Setup & Deployment](#-setup--deployment)
+- [🌐 Hosting on VPS](#-hosting-on-vps)
+- [🤝 Support](#-support)
+
+---
+
+## ✨ Features
+*   🚀 **Instant Generation**: Get a new email address in one click.
+*   🔄 **Live Inbox**: Refresh to receive OTPs and messages in real-time.
+*   📱 **User-Friendly**: Monospaced emails for easy "Tap-to-Copy".
+*   🔒 **Secure**: Private sessions and automatic cleanup.
+*   👮 **Admin Panel**: Broadcast messages and manage bot settings.
+
+---
 
 ## 🛠️ How It Works
+1.  **Subscription Check**: Ensures users are part of your community before granting access.
+2.  **Mail Assignment**: Creates a temporary account using the `mailjs` engine.
+3.  **Persistence**: Saves your session in MongoDB so your email stays active until you delete it.
+4.  **Content Extraction**: Cleans HTML emails and extracts important links for easy viewing on Telegram.
 
-1.  **Start**: Users start the bot and are greeted by a welcome message.
-2.  **Access Control**: The `accessMiddleware` checks if the user is an admin or if they have joined the required Telegram channel.
-3.  **Mail Generation**: When a user clicks "Generate Mail", the bot uses the `mailjs` API to create a new account.
-4.  **Session Management**: Account details (username/password) are securely stored in MongoDB.
-5.  **Inbox Refresh**: The bot fetches the latest messages from the `mailjs` service and displays them as inline buttons.
-6.  **Viewing Content**: Clicking a message fetches the full content, cleans up HTML for Telegram display, and extracts important links (like verification buttons).
+---
 
-## 📋 Prerequisites
+## 📋 System Requirements
+| Requirement | Minimum Version |
+| :--- | :--- |
+| **Node.js** | `v18.x.x` or higher |
+| **NPM** | `v9.x.x` or higher |
+| **Database** | `MongoDB v5.0+` (Local or Atlas) |
+| **OS** | Linux (Recommended), Windows, or macOS |
 
-- **Node.js**: v18 or higher.
-- **MongoDB**: A local instance or a MongoDB Atlas URI.
-- **Telegram Bot Token**: Get one from [@BotFather](https://t.me/BotFather).
+---
 
 ## ⚙️ Configuration
+Create a `.env` file in the root directory. Use the following validation rules to ensure the bot runs without errors:
 
-Create a `.env` file in the root directory and fill in your details:
+| Variable | Description | Example / Validation |
+| :--- | :--- | :--- |
+| `BOT_TOKEN` | API Token from [@BotFather](https://t.me/BotFather) | `123456:ABC-DEF...` |
+| `MONGO_URI` | Your MongoDB connection string | `mongodb+srv://.../` (Must end with `/`) |
+| `CHANNEL_ID` | Numeric ID of the required channel | `-100123456789` (Must be numeric) |
+| `CHANNEL_LINK` | Public username of the channel | `@YourChannel` (Must include `@`) |
+| `ADMIN_ID` | Your numeric Telegram ID | `123456789` (Must be numeric) |
 
-```env
-BOT_TOKEN=your_bot_token
-MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/
-CHANNEL_ID=-100xxxxxxxxxx
-CHANNEL_LINK=https://t.me/your_channel
-ADMIN_ID=your_telegram_id
+---
+
+## 🚀 Setup & Deployment
+
+### 1️⃣ Clone the Repository
+```bash
+git clone <your-repo-url>
+cd temp-mail
 ```
 
-> **Note:** Ensure your `MONGO_URI` includes a trailing `/` if you are using the default connection logic.
-
-## 📦 Installation
-
-1.  Clone the repository:
-    ```bash
-    git clone <repository_url>
-    cd temp-mail
-    ```
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-3.  Start the bot:
-    ```bash
-    node index.js
-    ```
-
-## 🌐 Deployment on VPS
-
-To keep your bot running 24/7 on a VPS (like Ubuntu), follow these steps:
-
-### 1. Install Node.js and PM2
+### 2️⃣ Install Dependencies
 ```bash
-# Install Node.js
+# Installs core libraries: telegraf, mongoose, mailjs, and dotenv
+npm install
+```
+
+### 3️⃣ Local Execution
+```bash
+# Start the bot in development mode
+node index.js
+```
+
+---
+
+## 🌐 Hosting on VPS (Production)
+
+For a stable **24/7 online** status, use **PM2** (Process Manager 2).
+
+### 🛠️ Step 1: Install Node.js & PM2
+```bash
+# Ubuntu/Debian example
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt-get install -y nodejs
-
-# Install PM2 (Process Manager)
 sudo npm install -g pm2
 ```
 
-### 2. Setup the Project
+### ⚙️ Step 2: Environment Setup
 ```bash
-git clone <repository_url>
-cd temp-mail
-npm install
-nano .env # Paste your environment variables here
+nano .env  # Paste your validated variables here
 ```
 
-### 3. Start the Bot with PM2
+### 🚀 Step 3: Launch with Auto-Restart
 ```bash
-pm2 start index.js --name "temp-mail-bot"
-```
+# Start the process
+pm2 start index.js --name "mail-bot"
 
-### 4. Manage the Bot
-- **Check Status**: `pm2 status`
-- **Check Logs**: `pm2 logs temp-mail-bot`
-- **Restart**: `pm2 restart temp-mail-bot`
-- **Stop**: `pm2 stop temp-mail-bot`
-
-### 5. Enable Auto-Restart on Boot
-```bash
+# Enable auto-restart on server reboot
 pm2 startup
 pm2 save
 ```
 
-## 🤝 Support
-For any issues, contact the developer via the bot.
+### 📊 Step 4: Monitoring
+*   `pm2 status`: Check if the bot is online.
+*   `pm2 logs mail-bot`: View real-time error logs.
+*   `pm2 restart mail-bot`: Apply changes after updating `.env`.
 
+---
+
+## 🤝 Support
+📢 **Join Channel**: [@sk_genz](https://t.me/sk_genz)  
+👨‍💻 **Developer**: Use the **"Meet Developer"** button inside the bot for direct support or custom bot development.
+
+---
+*Built with ❤️ using Telegraf and Node.js*

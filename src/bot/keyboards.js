@@ -7,17 +7,18 @@ export const getStartKeyboard = (channelLink) => ({
 });
 
 export const getMailMenuKeyboard = (hasMail, developerContact) => {
+    const devUrl = developerContact || "https://t.me/sk_genz";
     if (!hasMail) {
         return {
             inline_keyboard: [
-                [{ text: "Generate Mail", callback_data: "gen" }, { text: "Meet Developer", url: developerContact }]
+                [{ text: "Generate Mail", callback_data: "gen" }, { text: "Meet Developer", url: devUrl }]
             ]
         };
     }
     return {
         inline_keyboard: [
             [{ text: "Refresh", callback_data: "refresh" }, { text: "Delete Mail", callback_data: "delete_mail" }],
-            [{ text: "Change Mail", callback_data: "change_mail" }, { text: "Meet Developer", url: developerContact }]
+            [{ text: "Change Mail", callback_data: "change_mail" }, { text: "Meet Developer", url: devUrl }]
         ]
     };
 };

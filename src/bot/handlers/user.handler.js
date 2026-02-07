@@ -25,9 +25,16 @@ export function registerUserHandlers(bot) {
             );
         }
 
-        const hasMail = mailManager.hasActiveMail(id);
-        ctx.reply(
-            "✅ Welcome! Choose an option:",
+        const hasMail = await mailManager.hasActiveMail(id);
+        let text = "✅ Welcome! Choose an option:";
+        
+        if (hasMail) {
+            const currentMail = await mailManager.getUserMail(id);
+            text = `📧 <b>Your Active Mail:</b>\n\n<code>${currentMail.username}</code>\n\nClick refresh to check for incoming messages.`;
+        }
+
+        ctx.replyWithHTML(
+            text,
             {
                 reply_markup: getMailMenuKeyboard(hasMail, config.developerContact)
             }
@@ -43,10 +50,18 @@ export function registerUserHandlers(bot) {
             return ctx.answerCbQuery("❌ Still not joined!", { show_alert: true });
         }
 
-        const hasMail = mailManager.hasActiveMail(userId);
+        const hasMail = await mailManager.hasActiveMail(userId);
+        let text = "✅ Thanks for joining! Choose an option:";
+
+        if (hasMail) {
+            const currentMail = await mailManager.getUserMail(userId);
+            text = `📧 <b>Your Active Mail:</b>\n\n<code>${currentMail.username}</code>\n\nClick refresh to check for incoming messages.`;
+        }
+
         await ctx.editMessageText(
-            "✅ Thanks for joining! Choose an option:",
+            text,
             {
+                parse_mode: 'HTML',
                 reply_markup: getMailMenuKeyboard(hasMail, config.developerContact)
             }
         );

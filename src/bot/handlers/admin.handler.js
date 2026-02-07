@@ -86,8 +86,8 @@ export function registerAdminHandlers(bot) {
     bot.action("admin_admins", async (ctx) => {
         if (!await isAdmin(ctx.from.id)) return;
         const config = await getBotConfig();
-        let text = `👥 <b>Manage Admins</b> \n        Current Admins:`;
-        (config.admins || []).forEach(id => text += `<code>${id}</code>`);
+        let text = `👥 <b>Manage Admins</b>\n\nCurrent Admins:\n`;
+        (config.admins || []).forEach(id => text += `<code>${id}</code>\n`);
         await ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: getAdminManageKeyboard() });
     });
 

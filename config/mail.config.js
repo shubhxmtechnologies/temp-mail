@@ -4,6 +4,8 @@ import { MailSession } from "./db.cofig.js";
 class TelegramMailManager {
     constructor() {
         this.mailjs = new Mailjs();
+        // Start the auto-cleanup task every 1 minute
+        setInterval(() => this.autoCleanup(), 60 * 1000);
     }
 
     // 1. Generate Mail for a specific user
@@ -94,6 +96,28 @@ class TelegramMailManager {
     // New: Cleanup session from DB if login fails or session expired
     async cleanupSession(telegramId) {
         await MailSession.deleteOne({ telegramId });
+    }
+
+    async autoCleanup() {
+        try {
+            // Find sessions older than 10 minutes
+            const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+            const expiredSessions = await MailSession.find({
+                createdAt: { $lt: tenMinutesAgo }
+            });
+
+            if (expiredSessions.length === 0) return;
+
+            console.log(`[Cleanup] Found ${expiredSessions.length} expired sessions.`);
+
+            for (const session of expiredSessions) {
+                console.log(`[Cleanup] Deleting session for User: ${session.telegramId}`);
+                // Use your existing deleteMail logic to clean both DB and Mail Server
+                await this.deleteMail(session.telegramId);
+            }
+        } catch (error) {
+            console.error("Error during auto-cleanup:", error);
+        }
     }
 }
 

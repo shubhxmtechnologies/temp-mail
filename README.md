@@ -56,7 +56,7 @@ Create a `.env` file in the root directory. Use the following validation rules t
 | Variable | Description | Example / Validation |
 | :--- | :--- | :--- |
 | `BOT_TOKEN` | API Token from [@BotFather](https://t.me/BotFather) | `123456:ABC-DEF...` |
-| `MONGO_URI` | Your MongoDB connection string | `mongodb+srv://.../` (Must end with `/`) |
+| `MONGO_URI` | Your MongoDB connection string | `mongodb+srv://.../` |
 | `CHANNEL_ID` | Numeric ID of the required channel | `-100123456789` (Must be numeric) |
 | `CHANNEL_LINK` | Public username of the channel | `@YourChannel` (Must include `@`) |
 | `ADMIN_ID` | Your numeric Telegram ID | `123456789` (Must be numeric) |

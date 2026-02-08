@@ -43,7 +43,8 @@ export const AdminState = mongoose.model("AdminState", adminStateSchema);
 
 export const connectDB = async () => {
     try {
-        await mongoose.connect(process.env.MONGO_URI+"TG_BOT", {
+        await mongoose.connect(process.env.MONGO_URI, {
+            dbName: "TG_BOT",
             autoIndex: true,
         });
 

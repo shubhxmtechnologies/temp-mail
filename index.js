@@ -34,8 +34,8 @@ async function bootstrap() {
 
         // Launch Bot
         console.log("🚀 Bot is starting...");
-        await bot.launch();
-        console.log("✅ Bot is online!");
+        bot.launch()
+            .then(() => console.log("✅ Bot is online!"));
 
     } catch (error) {
         console.error("💥 Bootstrap failed:", error);

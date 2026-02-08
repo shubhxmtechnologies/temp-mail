@@ -6,7 +6,6 @@ import {
     updateDeveloperContact,
     addAdmin,
     removeAdmin,
-    getBotConfig,
     setAdminState,
     getAdminState,
     clearAdminState
@@ -48,8 +47,7 @@ export function registerAdminHandlers(bot) {
         if (!await isAdmin(ctx.from.id)) return;
         const count = await getUserCount();
         await ctx.editMessageText(`📊 <b>Bot Statistics</b>
-
-👥 Total Users: <b>${count}</b>`, {
+            👥 Total Users: <b>${count}</b>`, {
             parse_mode: 'HTML',
             reply_markup: { inline_keyboard: [[{ text: "🔙 Back", callback_data: "admin_menu" }]] }
         });
@@ -75,7 +73,7 @@ export function registerAdminHandlers(bot) {
 
     bot.action("admin_settings", async (ctx) => {
         if (!await isAdmin(ctx.from.id)) return;
-        const config = await getBotConfig();
+        const config = ctx.state.config;
         let text = `⚙️ <b>Settings</b>\n`;
         text += `🆔 <b>Channel ID:</b> ${config.channelId || 'Not Set'}\n`;
         text += `🔗 <b>Link:</b> ${config.channelLink || 'Not Set'}\n`;
@@ -85,7 +83,7 @@ export function registerAdminHandlers(bot) {
 
     bot.action("admin_admins", async (ctx) => {
         if (!await isAdmin(ctx.from.id)) return;
-        const config = await getBotConfig();
+        const config =  ctx.state.config;
         let text = `👥 <b>Manage Admins</b>\n\nCurrent Admins:\n`;
         (config.admins || []).forEach(id => text += `<code>${id}</code>\n`);
         await ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: getAdminManageKeyboard() });
@@ -132,7 +130,7 @@ export function registerAdminHandlers(bot) {
         if (!state) return next();
 
         if (state.step === 'broadcast_msg') {
-            await clearAdminState(userId);
+            await clearAdminState(userId).catch()
             const users = await getAllUsers();
             ctx.reply(`⏳ Sending broadcast to ${users.length} users...`);
             let sent = 0, blocked = 0;

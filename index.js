@@ -5,6 +5,7 @@ import { initBotConfig } from "./helpers/admin.helpers.js";
 
 // Middlewares
 import { accessMiddleware } from "./src/bot/middlewares/access.middleware.js";
+import { throttleMiddleware } from "./src/bot/middlewares/throttle.middleware.js";
 
 // Handlers
 import { registerAdminHandlers } from "./src/bot/handlers/admin.handler.js";
@@ -21,6 +22,7 @@ async function bootstrap() {
 
         // Register Global Middlewares
         bot.use(accessMiddleware);
+        bot.use(throttleMiddleware);
 
         // Register All Handlers
         registerAdminHandlers(bot);

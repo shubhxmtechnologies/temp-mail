@@ -2,6 +2,7 @@ import { getMailMenuKeyboard, getStartKeyboard } from "../keyboards.js";
 import mailManager from "../../../config/mail.config.js";
 import { checkSubscription } from "../../../helpers/subscription.helpers.js";
 import fs from 'fs';
+import { escapeHTML, safeExecute, editOrReply } from "../../../helpers/utils.js";
 
 export function registerUserHandlers(bot) {
     bot.start(async (ctx) => {
@@ -22,12 +23,12 @@ export function registerUserHandlers(bot) {
 
         const photoPath = './public/pic_of_bot.webp';
         if (fs.existsSync(photoPath)) {
-            await ctx.replyWithPhoto({ source: photoPath }, {
+            await safeExecute(() => ctx.replyWithPhoto({ source: photoPath }, {
                 caption: welcomeText,
                 parse_mode: 'HTML'
-            });
+            }));
         } else {
-            await ctx.replyWithHTML(welcomeText);
+            await safeExecute(() => ctx.replyWithHTML(welcomeText));
         }
 
 
@@ -51,7 +52,7 @@ export function registerUserHandlers(bot) {
             secondMsg = "⚠️ <b>Network issue</b>\n\nUnable to verify channel subscription right now.\nPlease check your internet and try again.";
         } else if (subscribed === true) {
             secondMsg = hasMail
-                ? `📧 <b>You already have an active mail:</b>\n<code>${currentMail.username}</code>`
+                ? `📧 <b>You already have an active mail:</b>\n<code>${escapeHTML(currentMail.username)}</code>`
                 : `👇 <b>Click below to get started!</b>`;
         } else {
             secondMsg = `❌ <b>You must join our channel to use this bot!</b>\n\nPlease join the channel and click the button below to continue.`;
@@ -61,9 +62,9 @@ export function registerUserHandlers(bot) {
             ? getMailMenuKeyboard(hasMail, config.developerContact)
             : getStartKeyboard(config.channelLink);
 
-        await ctx.replyWithHTML(secondMsg, {
+        await safeExecute(() => ctx.replyWithHTML(secondMsg, {
             reply_markup
-        });
+        }));
 
     });
 
@@ -74,7 +75,7 @@ export function registerUserHandlers(bot) {
             const config = ctx.state.config;
 
             //  stop spinner immediately 
-            await ctx.answerCbQuery();
+            await ctx.answerCbQuery().catch(() => { });
 
 
             let subscribed = false;
@@ -93,21 +94,21 @@ export function registerUserHandlers(bot) {
                 return ctx.answerCbQuery(
                     "⚠️ Network issue. Please try again in a moment.",
                     { show_alert: true }
-                );
+                ).catch(() => { });
             }
 
             if (subscribed === false) {
                 return ctx.answerCbQuery(
                     "❌ Still not joined! Please join and try again.",
                     { show_alert: true }
-                );
+                ).catch(() => { });
             }
 
 
             const hasMail = !!currentMail;
 
             const text = hasMail
-                ? `📧 <b>You have an active Mail :</b>\n\n<code>${currentMail.username}</code>\n\nClick refresh to check for incoming messages.`
+                ? `📧 <b>You have an active Mail :</b>\n\n<code>${escapeHTML(currentMail.username)}</code>\n\nClick refresh to check for incoming messages.`
                 : `✅ <b>Success!</b> You have joined the channel.\n\nChoose an option to continue:`;
 
 
@@ -119,10 +120,10 @@ export function registerUserHandlers(bot) {
 
 
             // send new menu 
-            return await ctx.reply(text, {
+            return await safeExecute(() => ctx.reply(text, {
                 parse_mode: 'HTML',
                 reply_markup: getMailMenuKeyboard(hasMail, config.developerContact)
-            });
+            }));
 
         } catch (err) {
             console.error("Error in check_join action:", err.message);

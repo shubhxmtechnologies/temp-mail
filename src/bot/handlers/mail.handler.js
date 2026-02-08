@@ -4,10 +4,12 @@ import {
     getInboxKeyboard,
     getMessageViewKeyboard
 } from "../keyboards.js";
+import { escapeHTML, safeExecute, editOrReply } from "../../../helpers/utils.js";
 
 export function registerMailHandlers(bot) {
     // Generate Mail
     bot.action("gen", async (ctx) => {
+        await ctx.answerCbQuery().catch(() => { });
         const userId = ctx.from.id;
         const config = ctx.state.config;
 
@@ -16,12 +18,9 @@ export function registerMailHandlers(bot) {
             const check = await mailManager.refresh(userId);
 
             if (check && check.status) {
-                return ctx.replyWithHTML(`⚠️ You already have an active mail:
-
-📧 <code>${currentMail.username}</code>
-
-Please use it or delete it first.
-Copy mail by clicking on the mail.`, {
+                const text = `⚠️ You already have an active mail:\n\n📧 <code>${escapeHTML(currentMail.username)}</code>\n\nPlease use it or delete it first.\nCopy mail by clicking on the mail.`;
+                return await editOrReply(ctx, text, {
+                    parse_mode: 'HTML',
                     reply_markup: getMailMenuKeyboard(true, config.developerContact)
                 });
             } else {
@@ -31,45 +30,27 @@ Copy mail by clicking on the mail.`, {
 
         const newMail = await mailManager.generateMail(userId);
         if (newMail) {
-            const text = `✅ New Email Generated:
-
-📧 <code>${newMail.username}</code>
-
-Click refresh to check for incoming messages.
-Copy mail by clicking on the mail.`;
-            try {
-                await ctx.editMessageText(text, {
-                    parse_mode: 'HTML',
-                    reply_markup: getMailMenuKeyboard(true, config.developerContact)
-                });
-            } catch (error) {
-                ctx.replyWithHTML(text, {
-                    reply_markup: getMailMenuKeyboard(true, config.developerContact)
-                });
-            }
+            const text = `✅ New Email Generated:\n\n📧 <code>${escapeHTML(newMail.username)}</code>\n\nClick refresh to check for incoming messages.\nCopy mail by clicking on the mail.`;
+            await editOrReply(ctx, text, {
+                parse_mode: 'HTML',
+                reply_markup: getMailMenuKeyboard(true, config.developerContact)
+            });
         } else {
-            ctx.reply("❌ Failed to generate mail. Please try again later.");
+            await safeExecute(() => ctx.reply("❌ Failed to generate mail. Please try again later."));
         }
     });
 
     // Refresh Inbox
     bot.action("refresh", async (ctx) => {
+        await ctx.answerCbQuery().catch(() => { });
         const userId = ctx.from.id;
         const config = ctx.state.config
 
         if (!(await mailManager.hasActiveMail(userId))) {
-            try {
-                return await ctx.editMessageText("❌ This Mail is not active. Please generate one.", {
-                    reply_markup: getMailMenuKeyboard(false, config.developerContact)
-                });
-            } catch (error) {
-                return await ctx.reply(
-                    "❌ This Mail is not active. Please generate one.",
-                    {
-                        reply_markup: getMailMenuKeyboard(false, config.developerContact)
-                    }
-                );
-            }
+            const text = "❌ This Mail is not active. Please generate one.";
+            return await editOrReply(ctx, text, {
+                reply_markup: getMailMenuKeyboard(false, config.developerContact)
+            });
         }
 
         try {
@@ -83,45 +64,28 @@ Copy mail by clicking on the mail.`;
                 }
 
                 const msgText = "📬 <b>Your Inbox:</b> Select a message to read its content:";
-                try {
-                    await ctx.editMessageText(msgText, {
-                        parse_mode: 'HTML',
-                        reply_markup: getInboxKeyboard(inbox)
-                    });
-                } catch (error) {
-                    await ctx.replyWithHTML(msgText, { reply_markup: getInboxKeyboard(inbox) });
-                }
+                await editOrReply(ctx, msgText, {
+                    parse_mode: 'HTML',
+                    reply_markup: getInboxKeyboard(inbox)
+                });
             } else {
                 try {
-                    await ctx.reply("Server Bussy Please Try Again Later")
+                    await safeExecute(() => ctx.reply("Server Bussy Please Try Again Later"));
                 } catch (_) { }
                 throw new Error("Session Lost");
             }
         } catch (error) {
             await mailManager.cleanupSession(userId);
-            try {
-                await ctx.editMessageText("⚠️ Session expired. Please generate a new one.", {
-                    reply_markup: getMailMenuKeyboard(false, config.developerContact)
-                });
-            } catch (e) {
-                await ctx.reply(
-                    "⚠️ Session expired. Please generate a new one.",
-                    {
-                        reply_markup: getMailMenuKeyboard(false, config.developerContact)
-                    }
-                );
-            }
+            const text = "⚠️ Session expired. Please generate a new one.";
+            await editOrReply(ctx, text, {
+                reply_markup: getMailMenuKeyboard(false, config.developerContact)
+            });
         }
     });
 
-    function escapeHTML(str = "") {
-        return str
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-    }
     // View Message
     bot.action(/^view_msg_(.+)$/, async (ctx) => {
+        await ctx.answerCbQuery().catch(() => { });
         const userId = ctx.from.id;
         const msgId = ctx.match[1];
 
@@ -162,116 +126,77 @@ Copy mail by clicking on the mail.`;
                     rawBody = rawBody.trim();
                 }
 
-                let displayMsg = `📬 <b>Message Details:</b>
+                let displayMsg = `📬 <b>Message Details:</b>\n\n`;
+                displayMsg += `<b>From:</b> ${escapeHTML(m.from.address)}\n`;
+                displayMsg += `<b>Subject:</b> ${escapeHTML(m.subject || '(No Subject)')}\n`;
+                displayMsg += `<b>Date:</b> ${new Date(m.createdAt).toLocaleString()}\n\n`;
+                displayMsg += `<b>Content:</b>\n${escapeHTML(rawBody) || "No content available."}`;
 
-`;
-                displayMsg += `<b>From:</b> ${m.from.address}
-`;
-                displayMsg += `<b>Subject:</b> ${m.subject || '(No Subject)'}
-`;
-                displayMsg += `<b>Date:</b> ${new Date(m.createdAt).toLocaleString()}
-
-`;
-                displayMsg += `<b>Content:</b>
-${rawBody || "No content available."}`;
-
-
-                await ctx.reply(displayMsg, {
+                await editOrReply(ctx, displayMsg, {
                     parse_mode: 'HTML',
                     disable_web_page_preview: true,
                     reply_markup: getMessageViewKeyboard(actionButtons)
                 });
             } else {
-                ctx.answerCbQuery("❌ Could not fetch message content.");
+                ctx.answerCbQuery("❌ Could not fetch message content.").catch(() => { });
             }
         } catch (error) {
             console.error("View Message Error:", error);
-            ctx.answerCbQuery("❌ Error fetching message.");
+            ctx.answerCbQuery("❌ Error fetching message.").catch(() => { });
         }
     });
 
     // Mail Menu (Back Button)
     bot.action("mail_menu", async (ctx) => {
+        await ctx.answerCbQuery().catch(() => { });
         const userId = ctx.from.id;
         const config = ctx.state.config
 
         if (!(await mailManager.hasActiveMail(userId))) {
-            try {
-                return ctx.editMessageText("❌ No active mail found. Generate New From Below : ", {
-                    reply_markup: getMailMenuKeyboard(false, config.developerContact)
-                });
-            } catch (error) {
-                return ctx.reply("No active mail found. Generate New From Below : ", {
-                    reply_markup: getMailMenuKeyboard(false, config.developerContact)
-                });
-            }
+            const text = "❌ No active mail found. Generate New From Below : ";
+            return await editOrReply(ctx, text, {
+                reply_markup: getMailMenuKeyboard(false, config.developerContact)
+            });
 
         }
 
         const currentMail = await mailManager.getUserMail(userId);
-        try {
-            await ctx.editMessageText(`📧 <b>Your Active Mail:</b>
-
-<code>${currentMail.username}</code>
-
-Click refresh to check for incoming messages.`, {
-                parse_mode: 'HTML',
-                reply_markup: getMailMenuKeyboard(true, config.developerContact)
-            });
-        } catch (error) {
-            await ctx.reply(`📧 <b>Your Active Mail:</b>
-
-<code>${currentMail.username}</code>
-
-Click refresh to check for incoming messages.`, {
-                parse_mode: 'HTML',
-                reply_markup: getMailMenuKeyboard(true, config.developerContact)
-            });
-        }
+        const text = `📧 <b>Your Active Mail:</b>\n\n<code>${escapeHTML(currentMail.username)}</code>\n\nClick refresh to check for incoming messages.`;
+        await editOrReply(ctx, text, {
+            parse_mode: 'HTML',
+            reply_markup: getMailMenuKeyboard(true, config.developerContact)
+        });
     });
 
     // Delete Mail
     bot.action("delete_mail", async (ctx) => {
+        await ctx.answerCbQuery().catch(() => { });
         const userId = ctx.from.id;
         const config = ctx.state.config
         await mailManager.deleteMail(userId);
 
-        try {
-            await ctx.editMessageText("🗑️ Email deleted successfully. Need a new one?", {
-                reply_markup: getMailMenuKeyboard(false, config.developerContact)
-            });
-        } catch (error) {
-            await ctx.reply("🗑️ Email deleted successfully. Need a new one?", {
-                reply_markup: getMailMenuKeyboard(false, config.developerContact)
-            });
-        }
+        const text = "🗑️ Email deleted successfully. Need a new one?";
+        await editOrReply(ctx, text, {
+            reply_markup: getMailMenuKeyboard(false, config.developerContact)
+        });
     });
 
     // Change Mail
     bot.action("change_mail", async (ctx) => {
+        await ctx.answerCbQuery().catch(() => { });
         const userId = ctx.from.id;
         const config = ctx.state.config
         await mailManager.deleteMail(userId);
 
         const newMail = await mailManager.generateMail(userId);
         if (newMail) {
-            const text = `🔄 Mail Changed!
-
-📧 <code>${newMail.username}</code>
-
-Copy mail by clicking on the mail.`;
-            try {
-                await ctx.editMessageText(text, {
-                    parse_mode: 'HTML',
-                    reply_markup: getMailMenuKeyboard(true, config.developerContact)
-                });
-            } catch (error) {
-                ctx.replyWithHTML(text, {
-                    reply_markup: getMailMenuKeyboard(true, config.developerContact)
-                });
-            }
+            const text = `🔄 Mail Changed!\n\n📧 <code>${escapeHTML(newMail.username)}</code>\n\nCopy mail by clicking on the mail.`;
+            await editOrReply(ctx, text, {
+                parse_mode: 'HTML',
+                reply_markup: getMailMenuKeyboard(true, config.developerContact)
+            });
         } else {
-            ctx.answerCbQuery("❌ Failed to generate new mail.", { show_alert: true });
+            ctx.answerCbQuery("❌ Failed to generate new mail.", { show_alert: true }).catch(() => { });
         }
     });
 }

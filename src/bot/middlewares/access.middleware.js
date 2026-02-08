@@ -2,6 +2,7 @@ import { checkSubscription } from '../../../helpers/subscription.helpers.js';
 import { getBotConfig, } from '../../../helpers/admin.helpers.js';
 import { saveToDb } from '../../../helpers/db.helpers.js';
 import { getStartKeyboard } from '../keyboards.js';
+import { safeExecute, escapeHTML } from '../../../helpers/utils.js';
 
 const denyCooldown = new Map();
 const DENY_COOLDOWN_MS = 3000;
@@ -36,11 +37,11 @@ export async function accessMiddleware(ctx, next) {
                 return ctx.answerCbQuery(
                     "⚠️ Network issue.\nPlease check your internet and try again.",
                     { show_alert: true }
-                );
+                ).catch(() => { });
             }
-            return ctx.reply(
+            return await safeExecute(() => ctx.reply(
                 "⚠️ Unable to verify subscription right now.\nPlease check your internet and try again."
-            );
+            ));
         } catch (_) {
             return;
         }
@@ -64,17 +65,14 @@ export async function accessMiddleware(ctx, next) {
         };
 
         // 1️⃣ show popup (if possible)
-        try {
-            if (ctx.callbackQuery) {
-                await ctx.answerCbQuery("❌ Channel join required!", { show_alert: true });
-            }
-        } catch (err) {
-            console.error('answerCbQuery failed:', err);
+        if (ctx.callbackQuery) {
+            await ctx.answerCbQuery("❌ Channel join required!", { show_alert: true }).catch(() => { });
         }
 
         // 2️⃣ always try to send a NEW message
         try {
-            const sent = await ctx.reply(message, keyboard);
+            const sent = await safeExecute(() => ctx.reply(message, keyboard));
+            if (!sent) return;
 
             // delete old denial message if exists
             const oldMsgId = lastDenyMessage.get(userId);

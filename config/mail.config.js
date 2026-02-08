@@ -83,14 +83,31 @@ class TelegramMailManager {
 
     // 4. Check if a specific user has a mail
     async hasActiveMail(telegramId) {
-        const count = await MailSession.countDocuments({ telegramId });
-        return count > 0;
+        const mail = await this.getUserMail(telegramId);
+        return !!mail;
     }
 
     // 5. Get existing mail details
     async getUserMail(telegramId) {
         const session = await MailSession.findOne({ telegramId });
-        return session ? session.account : null;
+        if (!session) return null;
+
+        const { username, password } = session.account;
+        try {
+            // Test login to see if the account is still active on MailJS server
+            const login = await this.mailjs.login(username, password);
+            if (login && login.status) {
+                return session.account;
+            } else {
+                // If login fails, account is likely expired on server
+                await this.cleanupSession(telegramId);
+                return null;
+            }
+        } catch (error) {
+            console.error(`Error verifying mail for ${telegramId}:`, error.message);
+            // On network error, we return the session we have as a fallback
+            return session.account;
+        }
     }
 
     // New: Cleanup session from DB if login fails or session expired
@@ -100,10 +117,10 @@ class TelegramMailManager {
 
     async autoCleanup() {
         try {
-            // Find sessions older than 10 minutes
-            const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+            // Find sessions older than 20 minutes
+            const twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000);
             const expiredSessions = await MailSession.find({
-                createdAt: { $lt: tenMinutesAgo }
+                createdAt: { $lt: twentyMinutesAgo }
             });
 
             if (expiredSessions.length === 0) return;

@@ -7,6 +7,7 @@ import { safeExecute, escapeHTML } from '../../../helpers/utils.js';
 const denyCooldown = new Map();
 const DENY_COOLDOWN_MS = 3000;
 const lastDenyMessage = new Map();
+
 export async function accessMiddleware(ctx, next) {
     const userId = ctx.from?.id;
     if (!userId) return;
@@ -29,8 +30,9 @@ export async function accessMiddleware(ctx, next) {
         return next();
     }
 
-    // 4. Check Subscription for EVERYONE else (including admins)
+    // 4. Check Subscription (Always Real-time)
     const subscribed = await checkSubscription(ctx, userId);
+
     if (subscribed === null) {
         try {
             if (ctx.callbackQuery) {

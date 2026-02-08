@@ -18,10 +18,13 @@ import {
 } from "../keyboards.js";
 import { escapeHTML, safeExecute, editOrReply } from "../../../helpers/utils.js";
 
+const activeBroadcasts = new Set();
+
 export function registerAdminHandlers(bot) {
     // Command
     bot.command('admin', async (ctx) => {
         if (!await isAdmin(ctx.from.id)) return;
+        await clearAdminState(ctx.from.id); // Clear any pending state
         await safeExecute(() => ctx.reply("👮‍♂️ <b>Admin Dashboard</b>", {
             parse_mode: 'HTML',
             reply_markup: getAdminDashboardKeyboard()
@@ -32,11 +35,17 @@ export function registerAdminHandlers(bot) {
     bot.action("admin_menu", async (ctx) => {
         await ctx.answerCbQuery().catch(() => { });
         if (!await isAdmin(ctx.from.id)) return;
+        await clearAdminState(ctx.from.id);
         const text = "👮‍♂️ <b>Admin Dashboard</b>";
         await editOrReply(ctx, text, {
             parse_mode: 'HTML',
             reply_markup: getAdminDashboardKeyboard()
         });
+    });
+
+    bot.action("stop_broadcast", async (ctx) => {
+        await ctx.answerCbQuery("🛑 Stopping broadcast...").catch(() => { });
+        activeBroadcasts.delete(ctx.from.id);
     });
 
     bot.action("admin_stats", async (ctx) => {
@@ -75,7 +84,7 @@ export function registerAdminHandlers(bot) {
     bot.action("admin_settings", async (ctx) => {
         await ctx.answerCbQuery().catch(() => { });
         if (!await isAdmin(ctx.from.id)) return;
-        const config = ctx.state.config;
+        const config = await getBotConfig();
         let text = `⚙️ <b>Settings</b>\n`;
         text += `🆔 <b>Channel ID:</b> ${escapeHTML(config.channelId || 'Not Set')}\n`;
         text += `🔗 <b>Link:</b> ${escapeHTML(config.channelLink || 'Not Set')}\n`;
@@ -86,7 +95,7 @@ export function registerAdminHandlers(bot) {
     bot.action("admin_admins", async (ctx) => {
         await ctx.answerCbQuery().catch(() => { });
         if (!await isAdmin(ctx.from.id)) return;
-        const config = ctx.state.config;
+        const config = await getBotConfig();
         let text = `👥 <b>Manage Admins</b>\n\nCurrent Admins:\n`;
         (config.admins || []).forEach(id => text += `<code>${escapeHTML(id)}</code>\n`);
         await editOrReply(ctx, text, { parse_mode: 'HTML', reply_markup: getAdminManageKeyboard() });
@@ -138,32 +147,76 @@ export function registerAdminHandlers(bot) {
     // Message Logic for Admin States
     bot.on("message", async (ctx, next) => {
         const userId = ctx.from.id;
+        if (ctx.message.text?.startsWith('/')) {
+            await clearAdminState(userId);
+            return next();
+        }
+
         const state = await getAdminState(userId);
         if (!state) return next();
 
         if (state.step === 'broadcast_msg') {
-            await clearAdminState(userId).catch()
+            if (activeBroadcasts.has(userId)) {
+                return await ctx.reply("⚠️ A broadcast is already in progress. Please wait for it to finish or stop it first.");
+            }
+            await clearAdminState(userId).catch(() => {});
+            activeBroadcasts.add(userId);
             const users = await getAllUsers();
-            await safeExecute(() => ctx.reply(`⏳ Sending broadcast to ${users.length} users...`));
+            const statusMsg = await ctx.reply(`⏳ Sending broadcast to ${users.length} users...`, {
+                reply_markup: { inline_keyboard: [[{ text: "🛑 Stop Broadcast", callback_data: "stop_broadcast" }]] }
+            });
+
             let sent = 0, blocked = 0;
-            for (const user of users) {
+            for (let i = 0; i < users.length; i++) {
+                if (!activeBroadcasts.has(userId)) break;
+                const user = users[i];
                 const res = await safeExecute(() => ctx.copyMessage(user.telegramId));
                 if (res) sent++; else blocked++;
-                await new Promise(r => setTimeout(r, 50));
+                
+                if (i % 20 === 0) {
+                    try {
+                        await ctx.telegram.editMessageText(ctx.chat.id, statusMsg.message_id, null, 
+                            `⏳ Broadcasting: ${sent + blocked}/${users.length}\n✅ Sent: ${sent}\n🚫 Blocked: ${blocked}`,
+                            { reply_markup: { inline_keyboard: [[{ text: "🛑 Stop Broadcast", callback_data: "stop_broadcast" }]] } }
+                        );
+                    } catch (_) {}
+                }
+                // Throttle to stay within Telegram limits (~30 msgs/sec for bots)
+                await new Promise(r => setTimeout(r, 60));
             }
-            return await safeExecute(() => ctx.reply(`✅ Broadcast Complete!\n                📨 Sent: ${sent}\n                🚫 Failed: ${blocked}`));
+            activeBroadcasts.delete(userId);
+            return await safeExecute(() => ctx.reply(`✅ Broadcast Complete!\n📨 Sent: ${sent}\n🚫 Failed: ${blocked}`));
         }
 
         if (state.step === 'forward_msg') {
-            await clearAdminState(userId);
+            if (activeBroadcasts.has(userId)) {
+                return await ctx.reply("⚠️ A broadcast is already in progress. Please wait for it to finish or stop it first.");
+            }
+            await clearAdminState(userId).catch(() => {});
+            activeBroadcasts.add(userId);
             const users = await getAllUsers();
-            await safeExecute(() => ctx.reply(`⏳ Forwarding to ${users.length} users...`));
+            const statusMsg = await ctx.reply(`⏳ Forwarding to ${users.length} users...`, {
+                reply_markup: { inline_keyboard: [[{ text: "🛑 Stop Broadcast", callback_data: "stop_broadcast" }]] }
+            });
+
             let sent = 0, blocked = 0;
-            for (const user of users) {
+            for (let i = 0; i < users.length; i++) {
+                if (!activeBroadcasts.has(userId)) break;
+                const user = users[i];
                 const res = await safeExecute(() => ctx.forwardMessage(user.telegramId));
                 if (res) sent++; else blocked++;
-                await new Promise(r => setTimeout(r, 50));
+
+                if (i % 20 === 0) {
+                    try {
+                        await ctx.telegram.editMessageText(ctx.chat.id, statusMsg.message_id, null, 
+                            `⏳ Forwarding: ${sent + blocked}/${users.length}\n✅ Sent: ${sent}\n🚫 Blocked: ${blocked}`,
+                            { reply_markup: { inline_keyboard: [[{ text: "🛑 Stop Broadcast", callback_data: "stop_broadcast" }]] } }
+                        );
+                    } catch (_) {}
+                }
+                await new Promise(r => setTimeout(r, 60));
             }
+            activeBroadcasts.delete(userId);
             return await safeExecute(() => ctx.reply(`✅ Forward Complete!\n\n📨 Sent: ${sent}\n🚫 Failed: ${blocked}`));
         }
 

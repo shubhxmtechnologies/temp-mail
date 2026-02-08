@@ -21,8 +21,8 @@ async function bootstrap() {
         await initBotConfig(SEED_ADMIN);
 
         // Register Global Middlewares
-        bot.use(accessMiddleware);
         bot.use(throttleMiddleware);
+        bot.use(accessMiddleware);
 
         // Register All Handlers
         registerAdminHandlers(bot);
@@ -37,7 +37,6 @@ async function bootstrap() {
         // Launch Bot
         console.log("🚀 Bot is starting...");
         bot.launch()
-            .then(() => console.log("✅ Bot is online!"));
 
     } catch (error) {
         console.error("💥 Bootstrap failed:", error);
@@ -48,5 +47,16 @@ async function bootstrap() {
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
+
+// Global Exception Handling
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception thrown:', err);
+    // Give some time for logging before exiting
+    setTimeout(() => process.exit(1), 1000);
+});
 
 bootstrap();

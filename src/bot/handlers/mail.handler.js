@@ -98,7 +98,8 @@ export function registerMailHandlers(bot) {
                 const actionButtons = [];
 
                 if (!rawBody && htmlContent) {
-                    const linkRegex = /<a\s+(?:[^>]*?\s+)?href="([^"]*)"[^>]*>(.*?)<\/a>/gi;
+                    // Improved regex to handle single quotes, extra spaces, and variations
+                    const linkRegex = /<a\s+(?:[^>]*?\s+)?href=["']([^"']*)["'][^>]*>(.*?)<\/a>/gi;
                     let match;
 
                     rawBody = ""
@@ -107,8 +108,11 @@ export function registerMailHandlers(bot) {
                     while ((match = linkRegex.exec(htmlContent)) !== null) {
                         let url = match[1];
                         let text = match[2].replace(/<[^>]*>?/gm, '').trim();
-                        const isValidUrl = /^https?:\/\//i.test(url);
-                        if (!isValidUrl || text.length <= 2) continue;
+                        
+                        // Basic URL validation
+                        if (!url.startsWith('http')) continue;
+                        if (text.length < 2) text = "Link"; // Fallback text
+
                         if (seenUrls.has(url)) continue;
                         seenUrls.add(url);
                         const safeText = escapeHTML(text.substring(0, 30));
@@ -119,9 +123,7 @@ export function registerMailHandlers(bot) {
                             url: url
                         });
 
-                        rawBody += `\n<b>${safeText} 👇👇</b>\n<code>${safeUrl}</code>\n`;
-
-
+                        rawBody += `\n<b>${safeText} 👇</b>\n<code>${safeUrl}</code>\n`;
                     }
                     rawBody = rawBody.trim();
                 }

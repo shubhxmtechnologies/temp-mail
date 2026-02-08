@@ -9,11 +9,13 @@ export async function safeExecute(fn) {
     try {
         return await fn();
     } catch (error) {
-        if (error.description && (
-            error.description.includes("bot was blocked by the user") || 
-            error.description.includes("user is deactivated") ||
-            error.description.includes("chat not found")
-        )) {
+        const errMsg = error.message || String(error);
+
+        // Handle common Telegram errors that aren't "bugs"
+        if (errMsg.includes("bot was blocked by the user") || 
+            errMsg.includes("user is deactivated") ||
+            errMsg.includes("chat not found")
+        ) {
             return null;
         }
         
@@ -25,8 +27,20 @@ export async function safeExecute(fn) {
             return await safeExecute(fn); // Retry
         }
 
-        console.error("Execution Error:", error.message || error);
-        return null; // Return null instead of throwing to prevent crashing the whole bot
+        // Handle Network Timeouts / Fetch Failures
+        if (errMsg.includes("timeout") || errMsg.includes("fetch failed") || errMsg.includes("UND_ERR_CONNECT_TIMEOUT")) {
+            console.error("Network Timeout Error: api.telegram.org is unreachable. Please check your VPS internet/proxy.");
+            return null;
+        }
+
+        // Sanitize sensitive info from logs (e.g. MongoDB connection strings)
+        let sanitizedMsg = errMsg;
+        if (sanitizedMsg.includes("mongodb+srv://")) {
+            sanitizedMsg = "MongoDB Connection Error (Credentials Masked)";
+        }
+
+        console.error("Execution Error:", sanitizedMsg);
+        return null;
     }
 }
 

@@ -15,8 +15,19 @@ export async function initBotConfig(initialAdminId) {
     }
 }
 
+let cachedConfig = null;
+let lastFetch = 0;
+const CACHE_TTL = 60 * 1000; // 1 minute cache
+
 export async function getBotConfig() {
-    return await BotConfig.findOne() || {};
+    const now = Date.now();
+    if (cachedConfig && (now - lastFetch < CACHE_TTL)) {
+        return cachedConfig;
+    }
+    const config = await BotConfig.findOne().lean() || {};
+    cachedConfig = config;
+    lastFetch = now;
+    return config;
 }
 
 export async function addAdmin(adminId) {
@@ -25,6 +36,7 @@ export async function addAdmin(adminId) {
         if (!config.admins.includes(adminId)) {
             config.admins.push(adminId);
             await config.save();
+            cachedConfig = null; // Invalidate cache
             return true;
         }
     }
@@ -36,6 +48,7 @@ export async function removeAdmin(adminId) {
     if (config) {
         config.admins = config.admins.filter(id => id !== adminId);
         await config.save();
+        cachedConfig = null; // Invalidate cache
         return true;
     }
     return false;
@@ -47,6 +60,7 @@ export async function updateChannelInfo(channelId, channelLink) {
         if (channelId) config.channelId = channelId;
         if (channelLink) config.channelLink = channelLink;
         await config.save();
+        cachedConfig = null; // Invalidate cache
         return true;
     }
     return false;
@@ -57,18 +71,19 @@ export async function updateDeveloperContact(contact) {
     if (config) {
         config.developerContact = "tg://user?id=" + contact;
         await config.save();
+        cachedConfig = null; // Invalidate cache
         return true;
     }
     return false;
 }
 
 export async function isAdmin(userId) {
-    const config = await BotConfig.findOne();
-    return config && config.admins.includes(userId);
+    const config = await getBotConfig();
+    return config && config.admins && config.admins.includes(userId);
 }
 
 export async function getAllUsers() {
-    return await User.find({}, { telegramId: 1 });
+    return await User.find({}, { telegramId: 1 }).lean();
 }
 
 export async function getUserCount() {
@@ -84,7 +99,7 @@ export async function setAdminState(telegramId, state) {
 }
 
 export async function getAdminState(telegramId) {
-    const data = await AdminState.findOne({ telegramId });
+    const data = await AdminState.findOne({ telegramId }).lean();
     return data ? data.state : null;
 }
 

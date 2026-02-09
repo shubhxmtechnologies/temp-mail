@@ -3,6 +3,7 @@ import { MailSession } from "./db.cofig.js";
 
 class TelegramMailManager {
     constructor() {
+        this.mailjs = new Mailjs();
         this.sessionCache = new Map(); // Cache login tokens
         // Start the auto-cleanup task every 1 minute
         setInterval(() => this.autoCleanup(), 60 * 1000);
@@ -12,23 +13,22 @@ class TelegramMailManager {
      * Creates a fresh authenticated Mailjs instance for the user.
      */
     async _getAuthInstance(telegramId, username, password) {
-        const mailjs = new Mailjs();
         const cached = this.sessionCache.get(telegramId);
         
         if (cached && cached.username === username) {
-            mailjs.token = cached.token;
-            mailjs.id = cached.id;
-            return mailjs;
+            this.mailjs.token = cached.token;
+            this.mailjs.id = cached.id;
+            return this.mailjs;
         }
 
-        const login = await mailjs.login(username, password);
+        const login = await this.mailjs.login(username, password);
         if (login && login.status) {
             this.sessionCache.set(telegramId, {
                 username,
-                token: mailjs.token,
-                id: mailjs.id
+                token: this.mailjs.token,
+                id: this.mailjs.id
             });
-            return mailjs;
+            return this.mailjs;
         }
         return null;
     }
@@ -36,8 +36,7 @@ class TelegramMailManager {
     // 1. Generate Mail for a specific user
     async generateMail(telegramId) {
         try {
-            const mailjs = new Mailjs();
-            const acc = await mailjs.createOneAccount();
+            const acc = await this.mailjs.createOneAccount();
             if (acc.status) {
                 // Save this specific account to MongoDB
                 await MailSession.findOneAndUpdate(
@@ -48,8 +47,8 @@ class TelegramMailManager {
                 // Update session cache
                 this.sessionCache.set(telegramId, {
                     username: acc.data.username,
-                    token: mailjs.token,
-                    id: mailjs.id
+                    token: this.mailjs.token,
+                    id: this.mailjs.id
                 });
                 return acc.data;
             }

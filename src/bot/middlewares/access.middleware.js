@@ -2,13 +2,14 @@ import { checkSubscription } from '../../../helpers/subscription.helpers.js';
 import { getBotConfig, } from '../../../helpers/admin.helpers.js';
 import { saveToDb } from '../../../helpers/db.helpers.js';
 import { getStartKeyboard } from '../keyboards.js';
-import { safeExecute, escapeHTML } from '../../../helpers/utils.js';
+import { safeExecute } from '../../../helpers/utils.js';
 
 const denyCooldown = new Map();
 const DENY_COOLDOWN_MS = 3000;
 const lastDenyMessage = new Map();
 
 export async function accessMiddleware(ctx, next) {
+
     const userId = ctx.from?.id;
     if (!userId) return;
 
@@ -42,7 +43,7 @@ export async function accessMiddleware(ctx, next) {
                 ).catch(() => { });
             }
             return await safeExecute(() => ctx.reply(
-                "⚠️ Unable to verify subscription right now.\nPlease check your internet and try again."
+                `⚠️ Unable to verify subscription right now.\nPlease check your internet and try again.`
             ));
         } catch (_) {
             return;
@@ -70,6 +71,8 @@ export async function accessMiddleware(ctx, next) {
         if (ctx.callbackQuery) {
             await ctx.answerCbQuery("❌ Channel join required!", { show_alert: true }).catch(() => { });
         }
+
+        ctx.deleteMessage().catch(() => { });
 
         // 2️⃣ always try to send a NEW message
         try {

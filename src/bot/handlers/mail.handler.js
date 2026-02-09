@@ -132,7 +132,7 @@ export function registerMailHandlers(bot) {
                 displayMsg += `<b>From:</b> ${escapeHTML(m.from.address)}\n`;
                 displayMsg += `<b>Subject:</b> ${escapeHTML(m.subject || '(No Subject)')}\n`;
                 displayMsg += `<b>Date:</b> ${new Date(m.createdAt).toLocaleString()}\n\n`;
-                displayMsg += `<b>Content:</b>\n${escapeHTML(rawBody) || "No content available."}`;
+                displayMsg += `<b>Content:</b>\n\n${rawBody || "No content available."}`;
 
                 await editOrReply(ctx, displayMsg, {
                     parse_mode: 'HTML',

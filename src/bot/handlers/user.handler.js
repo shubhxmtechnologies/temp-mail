@@ -2,7 +2,7 @@ import { getMailMenuKeyboard, getStartKeyboard } from "../keyboards.js";
 import mailManager from "../../../config/mail.config.js";
 import { checkSubscription } from "../../../helpers/subscription.helpers.js";
 import fs from 'fs';
-import { escapeHTML, safeExecute, editOrReply } from "../../../helpers/utils.js";
+import { escapeHTML, safeExecute } from "../../../helpers/utils.js";
 
 export function registerUserHandlers(bot) {
     bot.start(async (ctx) => {
